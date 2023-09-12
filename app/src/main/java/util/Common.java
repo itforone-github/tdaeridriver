@@ -9,13 +9,23 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Environment;
-import android.support.v4.app.ActivityCompat;
+
 import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.view.View;
 
+import androidx.annotation.NonNull;
+import androidx.core.app.ActivityCompat;
+
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.iid.FirebaseInstanceId;
+import com.google.firebase.iid.InstanceIdResult;
+
 import java.io.File;
 import java.io.FileOutputStream;
+
+import co.kr.dreamforone.tdaeridriver.R;
 
 /**
  * Created by 투덜이2 on 2017-07-14.
@@ -109,5 +119,27 @@ public class Common {
         }
 
     }
+    public static void setTOKEN(Activity mActivity){
 
+        FirebaseInstanceId.getInstance().getInstanceId()
+                .addOnCompleteListener(new OnCompleteListener<InstanceIdResult>() {
+                    @Override
+                    public void onComplete(@NonNull Task<InstanceIdResult> task) {
+                        if (!task.isSuccessful()) {
+
+                            return;
+                        }
+
+                        // Get new Instance ID token
+                        Common.TOKEN = task.getResult().getToken();
+
+                        // Log and toast
+                        String msg = mActivity.getString(R.string.msg_token_fmt, Common.TOKEN);
+
+
+
+                    }
+                });
+
+    }
 }

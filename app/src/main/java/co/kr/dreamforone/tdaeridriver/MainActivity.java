@@ -13,10 +13,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.StrictMode;
-import android.support.annotation.RequiresApi;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
-import android.support.v7.app.AppCompatActivity;
+
+
 import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
@@ -35,6 +33,12 @@ import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.iid.FirebaseInstanceId;
 import com.google.firebase.messaging.FirebaseMessaging;
@@ -49,9 +53,9 @@ import util.NetworkCheck;
 
 public class MainActivity extends AppCompatActivity {
     LinearLayout webLayout;
-    RelativeLayout networkLayout;
+    //RelativeLayout networkLayout;
     public static WebView webView;
-    NetworkCheck netCheck;
+    //NetworkCheck netCheck;
     Button replayBtn;
     public static boolean execBoolean = true;
     private BackPressCloseHandler backPressCloseHandler;
@@ -66,7 +70,8 @@ public class MainActivity extends AppCompatActivity {
     public static String no;
     int gpsCount=0;
     static final int PERMISSION_REQUEST_CODE = 1;
-
+    public static boolean isBack=false;
+    public static int resume=0;
     String[] PERMISSIONS = {
             "android.permission.ACCESS_FINE_LOCATION",
             "android.permission.ACCESS_COARSE_LOCATION",
@@ -181,12 +186,13 @@ public class MainActivity extends AppCompatActivity {
         startActivity(startIntent);
 
         mHandler.sendEmptyMessage(0);
+
     }
 
 
     //레이아웃 설정
     public void setLayout() {
-        networkLayout = (RelativeLayout) findViewById(R.id.networkLayout);//네트워크 연결이 끊겼을 때 레이아웃 가져오기
+       // networkLayout = (RelativeLayout) findViewById(R.id.networkLayout);//네트워크 연결이 끊겼을 때 레이아웃 가져오기
         webLayout = (LinearLayout) findViewById(R.id.webLayout);//웹뷰 레이아웃 가져오기
 
         webView = (WebView) findViewById(R.id.webView);//웹뷰 가져오기
@@ -201,7 +207,7 @@ public class MainActivity extends AppCompatActivity {
 
     @RequiresApi(api = Build.VERSION_CODES.ECLAIR_MR1)
     public void webViewSetting() {
-
+        Common.setTOKEN(this);
         WebSettings setting = webView.getSettings();//웹뷰 세팅용
 
         setting.setAllowFileAccess(true);//웹에서 파일 접근 여부
@@ -231,20 +237,20 @@ public class MainActivity extends AppCompatActivity {
         webView.addJavascriptInterface(new WebJavascriptEvent(), "Android");
 
         //네트워크 체킹을 할 때 쓰임
-        netCheck = new NetworkCheck(this, this);
+        /*netCheck = new NetworkCheck(this, this);
         netCheck.setNetworkLayout(networkLayout);
         netCheck.setWebLayout(webLayout);
-        netCheck.networkCheck();
+        netCheck.networkCheck();*/
         //뒤로가기 버튼을 눌렀을 때 클래스로 제어함
         backPressCloseHandler = new BackPressCloseHandler(this);
-
+/*
         replayBtn=(Button)findViewById(R.id.replayBtn);
         replayBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 netCheck.networkCheck();
             }
-        });
+        });*/
     }
 
     WebChromeClient chrome;
@@ -386,6 +392,12 @@ public class MainActivity extends AppCompatActivity {
                 }else if (url.startsWith("intent:")) {
                     try {
                         Intent intent = Intent.parseUri(url, Intent.URI_INTENT_SCHEME);
+                        // forbid launching activities without BROWSABLE category
+                        intent.addCategory("android.intent.category.BROWSABLE");
+                        // forbid explicit call
+                        intent.setComponent(null);
+                        // forbid Intent with selector Intent
+                        intent.setSelector(null);
                         Intent existPackage = getPackageManager().getLaunchIntentForPackage(intent.getPackage());
                         if (existPackage != null) {
                             getBaseContext().startActivity(intent);
@@ -423,10 +435,12 @@ public class MainActivity extends AppCompatActivity {
                 LocationPosition.setPosition( LocationPosition.act);
                 Log.d("url",url);
                 /* cookie */
-                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
-                    CookieSyncManager.getInstance().sync();
-                } else {
-                    CookieManager.getInstance().flush();
+                if(Build.VERSION.SDK_INT >= 21) {
+                    webView.getSettings().setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+                    //쿠키 생성
+                    CookieManager cookieManager = CookieManager.getInstance();
+                    cookieManager.setAcceptCookie(true);
+                    cookieManager.setAcceptThirdPartyCookies(webView,true);
                 }
                 Log.d("mb_id",Common.getPref(MainActivity.this,"ss_mb_id",""));
 /*
@@ -440,9 +454,16 @@ public class MainActivity extends AppCompatActivity {
 
                     }
                 }*/
-                //로그인할 때
-                if(url.startsWith(getString(R.string.domain)+"bbs/login.php")||url.startsWith(getString(R.string.domain)+"bbs/register_form.php")){
-                    view.loadUrl("javascript:fcmKey('"+ Common.TOKEN+"')");
+                try {
+                    if (!Common.TOKEN.equals("")) {
+                        Log.d("TOKEN", Common.TOKEN);
+                        view.loadUrl("javascript:fcmKey('" + Common.TOKEN + "')");
+                    } else {
+                        refreshToken();
+                        //view.loadUrl("javascript:fcmKey('" + Common.TOKEN + "')");
+                    }
+                }catch (Exception e){
+                    refreshToken();
                 }
 
                 if (url.startsWith(getString(R.string.url)+"index.php") || url.startsWith(getString(R.string.domain)+"/currentLat")||url.equals(getString(R.string.url)+"bbs/board.php?bo_table=short")||url.startsWith(getString(R.string.domain)+"bbs/login.php")) {
@@ -478,11 +499,23 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    @Override
+    protected void onStop() {
+        super.onStop();
+        resume=0;
+    }
 
     //다시 들어왔을 때
     @Override
     protected void onResume() {
         super.onResume();
+        webView.reload();
+        if(isBack&&resume==0) {
+            Intent startIntent = new Intent(MainActivity.this, SplashActivity.class);
+            startActivity(startIntent);
+            isBack=false;
+            resume++;
+        }
         /* cookie */
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
             CookieSyncManager.getInstance().startSync();
@@ -510,18 +543,15 @@ public class MainActivity extends AppCompatActivity {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
             CookieSyncManager.getInstance().stopSync();
         }
-
-
-
-
-
         execBoolean=false;
+        isBack=true;
+        resume=0;
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        netCheck.stopReciver();
+        //netCheck.stopReciver();
        // unregisterReceiver(receiver);
 
 
@@ -565,7 +595,6 @@ public class MainActivity extends AppCompatActivity {
     private void refreshToken(){
         FirebaseMessaging.getInstance().subscribeToTopic("tdaeridriver");
         Common.TOKEN= FirebaseInstanceId.getInstance().getToken();
-
     }
 
     Handler mHandler=new Handler(){
@@ -587,4 +616,6 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     };
+
+
 }

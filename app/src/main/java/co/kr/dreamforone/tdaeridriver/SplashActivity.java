@@ -9,8 +9,10 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.provider.Settings;
-import android.support.v7.app.AppCompatActivity;
+
 import android.widget.Toast;
+
+import androidx.appcompat.app.AppCompatActivity;
 
 
 /*
@@ -25,7 +27,8 @@ public class SplashActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_splash);
-
+        MainActivity.isBack=false;
+        MainActivity.resume++;
         //버전별 체크를 한 후 마시멜로 이상이면 퍼미션 체크 여부
         try {
             if (Build.VERSION.SDK_INT >= 23) {
@@ -43,10 +46,8 @@ public class SplashActivity extends AppCompatActivity {
             //권한이 없는 경우
             if (checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED
                     || checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                    || checkSelfPermission(Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED
                     || checkSelfPermission(Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED
-                    || checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)!= PackageManager.PERMISSION_GRANTED
-                    || checkSelfPermission(Manifest.permission.RECORD_AUDIO)!= PackageManager.PERMISSION_GRANTED )
+                    || checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)!= PackageManager.PERMISSION_GRANTED )
             {
                 //최초 거부를 선택하면 두번째부터 이벤트 발생 & 권한 획득이 필요한 이유를 설명
                 if (shouldShowRequestPermissionRationale(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
@@ -55,7 +56,6 @@ public class SplashActivity extends AppCompatActivity {
 
                 //요청 팝업 팝업 선택시 onRequestPermissionsResult 이동
                 requestPermissions(new String[]{
-                                Manifest.permission.READ_PHONE_STATE,
                                 Manifest.permission.ACCESS_FINE_LOCATION,
                                 Manifest.permission.ACCESS_COARSE_LOCATION,
                                 Manifest.permission.CALL_PHONE,
