@@ -17,10 +17,10 @@ import android.view.View;
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 
+
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
-import com.google.firebase.iid.FirebaseInstanceId;
-import com.google.firebase.iid.InstanceIdResult;
+import com.google.firebase.messaging.FirebaseMessaging;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -121,25 +121,16 @@ public class Common {
     }
     public static void setTOKEN(Activity mActivity){
 
-        FirebaseInstanceId.getInstance().getInstanceId()
-                .addOnCompleteListener(new OnCompleteListener<InstanceIdResult>() {
-                    @Override
-                    public void onComplete(@NonNull Task<InstanceIdResult> task) {
-                        if (!task.isSuccessful()) {
+        FirebaseMessaging.getInstance().getToken().addOnCompleteListener(new OnCompleteListener<String>() {
+            @Override
+            public void onComplete(@NonNull Task<String> task) {
+                if (!task.isSuccessful()) {
+                    return;
+                }
+                Common.TOKEN= task.getResult();
 
-                            return;
-                        }
-
-                        // Get new Instance ID token
-                        Common.TOKEN = task.getResult().getToken();
-
-                        // Log and toast
-                        String msg = mActivity.getString(R.string.msg_token_fmt, Common.TOKEN);
-
-
-
-                    }
-                });
+            }
+        });
 
     }
 }
